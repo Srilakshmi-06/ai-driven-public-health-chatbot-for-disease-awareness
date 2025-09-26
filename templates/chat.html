@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>careConnect — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../static/styles.css" />
+  </head>
+  <body>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">🌙</button>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="title">
+          <img src="images/logo.png" alt="careConnect Logo" class="logo" />
+          <span class="text">careConnect</span>
+        </div>
+        <nav class="nav">
+          <button class="active" data-target="chatbot"><span>💬</span><span class="text">Chatbot</span></button>
+          <button data-target="doctor"><span>👨‍⚕️</span><span class="text">Doctor Connect</span></button>
+          <button data-target="outbreak"><span>⚠️</span><span class="text">Outbreak Alert</span></button>
+          <button data-target="vaccination"><span>💉</span><span class="text">Vaccination Alert</span></button>
+          <button data-target="profile"><span>👤</span><span class="text">Profile</span></button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <!-- Chatbot Section -->
+        <section id="section-chatbot" class="section active">
+          <div class="chat-wrapper card chat-card" role="region" aria-label="careConnect Chatbot">
+            <div class="chat-header">
+              <h2>careConnect Assistant</h2>
+              <div class="status" aria-live="polite"></div>
+            </div>
+            <div id="chat-window" class="chat-window" aria-live="polite"></div>
+            <div class="chat-input">
+              <input id="chat-input" type="text" placeholder="Type your message..." aria-label="Message" />
+              <button id="send-btn" class="btn btn-primary" type="button">Send</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Doctor Connect Placeholder -->
+        <section id="section-doctor" class="section placeholder">
+          <div class="card">
+            <h2>Doctor Connect</h2>
+            <p>Coming Soon — consult with certified professionals.</p>
+          </div>
+        </section>
+
+        <!-- Outbreak Alert Placeholder -->
+        <section id="section-outbreak" class="section placeholder">
+          <div class="card">
+            <h2>Outbreak Alert</h2>
+            <p>Coming Soon — live alerts and safety guidance.</p>
+          </div>
+        </section>
+
+        <!-- Vaccination Alert Placeholder -->
+        <section id="section-vaccination" class="section placeholder">
+          <div class="card">
+            <h2>Vaccination Alert</h2>
+            <p>Coming Soon — reminders and eligibility updates.</p>
+          </div>
+        </section>
+
+        <!-- Profile Placeholder -->
+        <section id="section-profile" class="section placeholder">
+          <div class="card">
+            <h2>Your Profile</h2>
+            <p>Coming Soon — manage your information and preferences.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      (function(){
+  // Theme toggle with saved preference
+  function initTheme(){
+    const root = document.documentElement;
+    const toggle = document.getElementById('theme-toggle');
+    if(!toggle) return;
+    const stored = localStorage.getItem('cc-theme');
+    if(stored === 'dark'){ root.setAttribute('data-theme','dark'); toggle.textContent = '☀️'; }
+    function apply(theme){
+      if(theme === 'dark'){
+        root.setAttribute('data-theme','dark');
+        localStorage.setItem('cc-theme','dark');
+        toggle.textContent = '☀️';
+      } else {
+        root.removeAttribute('data-theme');
+        localStorage.setItem('cc-theme','light');
+        toggle.textContent = '🌙';
+      }
+    }
+    toggle.addEventListener('click', () => {
+      const isDark = root.getAttribute('data-theme') === 'dark';
+      apply(isDark ? 'light' : 'dark');
+    });
+  }
+  // Navigation: show/hide sections on dashboard
+  function initNavigation(){
+    const navButtons = document.querySelectorAll('.nav button');
+    const sections = {
+      chatbot: document.getElementById('section-chatbot'),
+      doctor: document.getElementById('section-doctor'),
+      outbreak: document.getElementById('section-outbreak'),
+      vaccination: document.getElementById('section-vaccination'),
+      profile: document.getElementById('section-profile')
+    };
+
+    function activate(target){
+      Object.values(sections).forEach(s => s && s.classList.remove('active'));
+      navButtons.forEach(b => b.classList.remove('active'));
+      const activeSection = sections[target];
+      if(activeSection){ activeSection.classList.add('active'); }
+      const btn = Array.from(navButtons).find(b => b.getAttribute('data-target') === target);
+      if(btn){ btn.classList.add('active'); }
+      // focus chat input if chatbot
+      if(target === 'chatbot'){
+        const input = document.getElementById('chat-input');
+        if(input){ input.focus(); }
+      }
+    }
+
+    navButtons.forEach(btn => btn.addEventListener('click', () => activate(btn.getAttribute('data-target'))));
+  }
+
+  // Chatbot behavior
+  function initChat(){
+    const chatWindow = document.getElementById('chat-window');
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    if(!chatWindow || !input || !sendBtn) return;
+
+    function appendMessage(text, role){
+      const div = document.createElement('div');
+      div.className = `bubble ${role}`;
+      div.textContent = text;
+      chatWindow.appendChild(div);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+
+    function send(){
+  const text = input.value.trim();
+  if(!text) return;
+  appendMessage(text, 'user');
+  input.value = '';
+
+  // Call Flask backend
+  fetch("/get", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ msg: text })
+  })
+  .then(res => res.text())
+  .then(data => {
+    appendMessage(data, 'bot'); // response from Flask
+  })
+  .catch(err => {
+    console.error(err);
+    appendMessage("⚠️ Server error. Please try again.", 'bot');
+  });
+}
+
+
+    sendBtn.addEventListener('click', send);
+    input.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        send();
+      }
+    });
+
+    // Seed welcome message
+    setTimeout(() => {
+      appendMessage('Hello! I\'m your careConnect assistant. How can I help today?', 'bot');
+    }, 300);
+  }
+
+  // Page init
+  document.addEventListener('DOMContentLoaded', function(){
+    initTheme();
+    initNavigation();
+    initChat();
+  });
+})();
+
+
+
+    </script>
+  </body>
+  </html>
+
+
